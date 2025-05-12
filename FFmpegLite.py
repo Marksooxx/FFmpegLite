@@ -25,14 +25,23 @@ import subprocess
 # ["-af", "equalizer=f=1000:width_type=h:width=200:g=-10"] 均衡器，在1000Hz处降低10dB
 # ["-af", "compand=attacks=0.05:decays=0.5:points=-80/-80|-45/-45|-27/-25|0/-10:soft-knee=6"] 动态范围压缩
 # ["-af", "silenceremove=start_periods=1:start_duration=1:start_threshold=-50dB:detection=peak"] 去除静音段
+# ["-af", "apad=pad_dur=1"] 结尾添加1s静音
 
+# 移除开头静音
+# ffmpeg -i 输入音频文件 -ss <要跳过的秒数> -c:a copy 输出音频文件
+# 移除结尾静音，添加指定长度静音
+# ffmpeg -i 输入音频文件 -af "silenceremove=stop_periods=-1:stop_threshold=-50dB:stop_duration=0.02,apad=pad_dur=1" -c:a <输出编码器> 输出音频文件
+# 
+# ffmpeg -i input.wav output.mp3
+# ffmpeg -i input.wav -q:a 0 output.mp3 较高质量接近无损
+# ffmpeg -i input.wav -q:a 2 output.mp3 较高优秀
 FFMPEG_OPTS = ["-c:a", "pcm_s24le"]
 
 # ANSI 颜色代码
 class Colors:
-    GREEN = '\033[37;42;1m'
-    RED = '\033[37;41;1m'
-    RESET = '\033[0m'
+    GREEN = "\033[37;42;1m"
+    RED = "\033[37;41;1m"
+    RESET = "\033[0m"
 
 # 支持的音频后缀
 EXTS = {".wav", ".mp3", ".flac", ".aac", ".m4a", ".ogg"}
@@ -42,11 +51,22 @@ for fn in os.listdir("."):
     if ext.lower() in EXTS:
         tmp = f"{name}_tmp{ext}"
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", fn,] + FFMPEG_OPTS + [tmp]
+        # 在每一个字符串中间加入某个元素，这里是空格
         print("→ 运行", " ".join(cmd))
+        # 这里subporcess.call() 启动这个命令，并且接受返回来的命令，如果是0......(成功执行并且正常退出通常是0)
         if subprocess.call(cmd) == 0:
-            os.replace(tmp, fn)
-            print(f"{Colors.GREEN}√ 処理成功：{Colors.RESET}{Colors.GREEN}{fn}{Colors.RESET}")
-            print()
+            try:
+                # 重命名覆盖函数
+                os.replace(tmp, fn)
+                print(f"{Colors.GREEN}√ 処理成功：{Colors.RESET}{Colors.GREEN}{fn}{Colors.RESET}")
+                print()
+            # 捕获osError 作为函数e（python默认的错误信息通常是英文的）
+            except OSError as e:
+                print(f"{Colors.RED}× 文件覆盖失败：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET} (临时文件: {tmp})")
+                print(f"{Colors.RED}  错误详情: {e}{Colors.RESET}")
+                print()
         else:
             print(f"{Colors.RED}× 処理失敗：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET}")
             print()
+
+input("按回车键退出...")
