@@ -39,34 +39,40 @@ FFMPEG_OPTS = ["-c:a", "pcm_s24le"]
 
 # ANSI 颜色代码
 class Colors:
-    GREEN = "\033[37;42;1m"
-    RED = "\033[37;41;1m"
+    GREEN = "\x1b[38;2;0;0;0;48;2;0;255;0m"
+    RED = "\x1b[38;2;255;255;255;48;2;255;0;0m"
     RESET = "\033[0m"
 
 # 支持的音频后缀
 EXTS = {".wav", ".mp3", ".flac", ".aac", ".m4a", ".ogg"}
 
-for fn in os.listdir("."):
-    name, ext = os.path.splitext(fn)
-    if ext.lower() in EXTS:
-        tmp = f"{name}_tmp{ext}"
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", fn,] + FFMPEG_OPTS + [tmp]
-        # 在每一个字符串中间加入某个元素，这里是空格
-        print("→ 运行", " ".join(cmd))
-        # 这里subporcess.call() 启动这个命令，并且接受返回来的命令，如果是0......(成功执行并且正常退出通常是0)
-        if subprocess.call(cmd) == 0:
-            try:
-                # 重命名覆盖函数
-                os.replace(tmp, fn)
-                print(f"{Colors.GREEN}√ 処理成功：{Colors.RESET}{Colors.GREEN}{fn}{Colors.RESET}")
+def process_audio_files():
+    for fn in os.listdir("."):
+        name, ext = os.path.splitext(fn)
+        if ext.lower() in EXTS:
+            tmp = f"{name}_tmp{ext}"
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", fn,] + FFMPEG_OPTS + [tmp]
+            # 在每一个字符串中间加入某个元素，这里是空格
+            print("→ 运行", " ".join(cmd))
+            # 这里subporcess.call() 启动这个命令，并且接受返回来的命令，如果是0......(成功执行并且正常退出通常是0)
+            if subprocess.call(cmd) == 0:
+                try:
+                    # 重命名覆盖函数
+                    os.replace(tmp, fn)
+                    print(f"{Colors.GREEN}√ 処理成功：{Colors.RESET}{Colors.GREEN}{fn}{Colors.RESET}")
+                    print()
+                # 捕获osError 作为函数e（python默认的错误信息通常是英文的）
+                except OSError as e:
+                    print(f"{Colors.RED}× 文件覆盖失败：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET} (临时文件: {tmp})")
+                    print(f"{Colors.RED}  错误详情: {e}{Colors.RESET}")
+                    print()
+            else:
+                print(f"{Colors.RED}× 処理失敗：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET}")
                 print()
-            # 捕获osError 作为函数e（python默认的错误信息通常是英文的）
-            except OSError as e:
-                print(f"{Colors.RED}× 文件覆盖失败：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET} (临时文件: {tmp})")
-                print(f"{Colors.RED}  错误详情: {e}{Colors.RESET}")
-                print()
-        else:
-            print(f"{Colors.RED}× 処理失敗：{Colors.RESET}{Colors.RED}{fn}{Colors.RESET}")
-            print()
 
-input("按回车键退出...")
+def main():
+    process_audio_files()
+    input("按回车键退出...")
+
+if __name__ == "__main__":
+    main()
